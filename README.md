@@ -1,4 +1,4 @@
-# 🛗 Simulador de Elevador com Controle Fuzzy PD  
+#  Simulador de Elevador com Controle Fuzzy PD 🛗  
 **Disciplina: Sistemas Embarcados**
 
 Este projeto simula o comportamento de um elevador real utilizando controle fuzzy PD e comunicação MQTT. Inclui uma interface gráfica interativa inspirada em painéis reais e modelagem física baseada em dados de um elevador comercial.
@@ -46,7 +46,7 @@ posiçãoAtual = k1 * posiçãoAtual * 0.999 + potenciaMotor * 0.251287
 
 ### Modelo de controle fuzzy (com defuzzificação):
 ```
-posiçãoAtual = posiçãoAtual * 0.9995 + k1 * potenciaMotor * 0.212312
+posiçãoAtual = k1 * posiçãoAtual * 0.9995 +  potenciaMotor * 0.212312
 ```
 
 - `k1` = +1 (subida) ou −1 (descida)  
