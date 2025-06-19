@@ -18,7 +18,7 @@ def simular_elevador(sp, posicao_inicial=4.0):
     # Cálculo do tempo total com base na distância e velocidade média
     distancia = abs(sp - posicao_atual)
     tempo_estimado = distancia / 0.5  # estimando 0.5 m/s de velocidade média
-    tempo_total = tempo_estimado + 4  # margem de segurança
+    tempo_total = tempo_estimado + 6  # margem de segurança
 
     erro_anterior = sp - posicao_atual
     tempo = 0
