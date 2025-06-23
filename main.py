@@ -85,5 +85,7 @@ def simular_elevador(sp, posicao_inicial=4.0):
     plt.tight_layout()
     plt.show()
 
+    return historico_tempo, historico_posicao, sp
+
 
 # pra chamar o ambiente: .\.venv\Scripts\activate
