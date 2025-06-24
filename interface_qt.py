@@ -1,9 +1,9 @@
 import sys
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QPushButton, QVBoxLayout, QLabel,
-    QGridLayout, QHBoxLayout, QLineEdit
+    QGridLayout, QHBoxLayout, QLineEdit, QSizePolicy, QInputDialog, QMessageBox
 )
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import QTimer, Qt
 import pyqtgraph as pg
 from simulador import SimuladorElevador
 from mqtt_handler import MqttElevadorClient
@@ -19,17 +19,17 @@ class ElevadorWindow(QWidget):
         self.simulacao_ativa = False
 
         self.andares = {
-            "Subsolo": 0,
-            "Térreo": 4,
-            "1º andar": 8,
-            "2º andar": 11,
-            "3º andar": 14,
-            "4º andar": 17,
-            "5º andar": 20,
-            "6º andar": 23,
-            "7º andar": 26,
-            "8º andar": 29,
-            "Técnico": 32
+            "-1": 0,
+            "T": 4,
+            "1": 8,
+            "2": 11,
+            "3": 14,
+            "4": 17,
+            "5": 20,
+            "6": 23,
+            "7": 26,
+            "8": 29,
+            "TÉC": 32
         }
 
         self.todos_tempos = []
@@ -42,31 +42,80 @@ class ElevadorWindow(QWidget):
     def init_ui(self):
         layout = QVBoxLayout()
 
+        self.visor_numero = QLabel("—")
+        self.visor_direcao = QLabel("—")
+
+        for lbl in (self.visor_numero, self.visor_direcao):
+            lbl.setAlignment(Qt.AlignCenter)
+            lbl.setFixedSize(60, 60)
+            lbl.setStyleSheet("""
+                QLabel {
+                    background-color: black;
+                    color: orange;
+                    font-size: 32px;
+                    font-weight: bold;
+                    border-radius: 12px;
+                }
+            """)
+
+        visor_layout = QHBoxLayout()
+        visor_layout.setAlignment(Qt.AlignCenter)
+        visor_layout.addWidget(self.visor_numero)
+        visor_layout.addWidget(self.visor_direcao)
+        layout.addLayout(visor_layout)
+
+
         self.setStyleSheet("""
             QWidget {
-                background-color: #f8f8f8;
-                font-family: Segoe UI;
+                background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                                stop:0 #dce1e3, stop:1 #f6f8f9);
+                font-family: 'Segoe UI';
                 font-size: 14px;
             }
-            QPushButton {
-                background-color: #ffffff;
-                border: 1px solid #cccccc;
-                border-radius: 6px;
-            }
-            QPushButton:disabled {
-                background-color: #dddddd;
-                color: #999999;
-            }
-            QPushButton:hover {
-                background-color: #e6f2ff;
-            }
+
             QLabel {
                 font-size: 15px;
                 font-weight: bold;
+                color: #333;
+            }
+
+            QPushButton {
+                background-color: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                                                stop:0 #f0f0f0, stop:1 #d9d9d9);
+                border: 2px solid #a0a0a0;
+                border-radius: 20px;
+                min-width: 60px;
+                min-height: 40px;
+                font-weight: bold;
+                color: #333;
+            }
+
+            QPushButton:hover {
+                background-color: #e0f7fa;
+                border: 2px solid #4fc3f7;
+            }
+
+            QPushButton:pressed {
+                background-color: #b3e5fc;
+                border: 2px solid #0288d1;
+                color: black;
+            }
+
+            QPushButton:disabled {
+                background-color: #eeeeee;
+                color: #999999;
+                border: 2px solid #cccccc;
+            }
+
+            QLineEdit {
+                padding: 6px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                background-color: #fff;
             }
         """)
 
-        # 🔐 Campo de senha com feedback
+        '''# 🔐 Campo de senha com feedback
         senha_layout = QHBoxLayout()
         senha_label = QLabel("Senha para Subsolo/Técnico:")
 
@@ -94,8 +143,18 @@ class ElevadorWindow(QWidget):
         senha_layout.addLayout(senha_box)
         layout.addLayout(senha_layout)
 
-        label = QLabel("Selecione o andar de destino:")
-        layout.addWidget(label)
+
+        self.direcao_label = QLabel("-")  # inicializado com traço
+        self.direcao_label.setAlignment(Qt.AlignCenter)
+        self.direcao_label.setStyleSheet("""
+            QLabel {
+                font-size: 24px;
+                color: orange;
+                font-weight: bold;
+            }
+        """)
+        layout.addWidget(self.direcao_label)'''
+
 
         self.grid = QGridLayout()
         self.botoes_andar = {}
@@ -115,24 +174,26 @@ class ElevadorWindow(QWidget):
         self.btn_emergencia.clicked.connect(self.parar_emergencia)
         self.btn_emergencia.setStyleSheet("""
             QPushButton {
-                background-color: red;
+                background-color: #ff3b30;
                 color: white;
                 font-weight: bold;
-                font-size: 16px;
+                font-size: 18px;
                 border-radius: 30px;
-                border: 3px solid darkred;
+                border: 3px solid #b71c1c;
+                padding: 12px;
             }
             QPushButton:hover {
-                background-color: #ff6666;
+                background-color: #ff6f61;
             }
         """)
+
 
         botao_layout.addWidget(self.btn_reiniciar)
         botao_layout.addWidget(self.btn_emergencia)
         layout.addLayout(botao_layout)
 
         self.plot_widget = pg.PlotWidget(title="Movimento da Cabine em Tempo Real")
-        self.plot_widget.setMinimumHeight(400)
+        self.plot_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.plot_widget.setBackground("w")
         self.plot_widget.setLabel('left', 'Altura', units='m')
         self.plot_widget.setLabel('bottom', 'Tempo', units='s')
@@ -140,10 +201,20 @@ class ElevadorWindow(QWidget):
         self.plot_widget.setXRange(0, 100)
         self.plot_widget.setYRange(0, 36)
         self.plot_widget.getPlotItem().getAxis('bottom').setTickSpacing(5, 5)
+        self.plot_widget.setBackground("#f4f4f4")
+        self.plot_widget.getPlotItem().getAxis('left').setPen(pg.mkPen(color=(50,50,50)))
+        self.plot_widget.getPlotItem().getAxis('bottom').setPen(pg.mkPen(color=(50,50,50)))
+
         self.curva = self.plot_widget.plot([], [], pen=pg.mkPen('b', width=2))
         layout.addWidget(self.plot_widget)
 
-        self.setLayout(layout)
+        container = QWidget()
+        container.setLayout(layout)
+
+        main_layout = QVBoxLayout(self)
+        main_layout.addWidget(container)
+        main_layout.setStretchFactor(container, 1)
+
 
     def criar_botoes(self):
         for i, (nome, altura) in enumerate(reversed(self.andares.items())):
@@ -154,53 +225,77 @@ class ElevadorWindow(QWidget):
             self.botoes_andar[nome] = btn
 
     def tratar_botao_andar(self, altura, nome_andar, botao):
-        if nome_andar in ["Subsolo", "Técnico"]:
-            senha = self.senha_input.text()
-            if senha != "admin123":
-                self.senha_feedback.setText("❌ Senha incorreta")
-                self.senha_feedback.setStyleSheet("color: red; font-size: 12px;")
+        # Verifica se é necessário solicitar senha
+        if nome_andar in ["-1", "TÉC"]:
+            senha, ok = QInputDialog.getText(self, "Acesso Restrito", "Digite a senha:", QLineEdit.Password)
+            if not ok or senha != "admin123":
+                QMessageBox.warning(self, "Acesso Negado", "❌ Senha incorreta ou cancelada.")
                 return
-            else:
-                self.senha_feedback.setText("✅ Senha aceita")
-                self.senha_feedback.setStyleSheet("color: green; font-size: 12px;")
-        else:
-            self.senha_feedback.setText("")
 
         if self.botao_selecionado:
             self.botao_selecionado.setStyleSheet("")
+
         botao.setStyleSheet("""
-            background-color: #c8facc;
-            border: 2px solid #4CAF50;
+            background-color: qradialgradient(cx:0.5, cy:0.5, radius:1,
+                                            fx:0.5, fy:0.5,
+                                            stop:0 #a5d6a7, stop:1 #81c784);
+            border: 2px solid #388e3c;
             font-weight: bold;
+            color: white;
         """)
+
         self.botao_selecionado = botao
+        # Atualiza a seta de direção no visor
+        pos_atual = self.simulador.posicao_atual if self.simulador else 0
+        if altura > pos_atual:
+            self.visor_direcao.setText("▲")
+        elif altura < pos_atual:
+            self.visor_direcao.setText("▼")
+        else:
+            self.visor_direcao.setText("-")
+        
         self.iniciar_simulacao(altura)
 
-    def iniciar_simulacao(self, destino):
+
+
+    def iniciar_simulacao(self, sp):
         posicao_atual = self.simulador.posicao_atual if self.simulador else 0.0
         tempo_base = self.todos_tempos[-1] if self.todos_tempos else 0.0
 
-        self.simulador = SimuladorElevador(destino, posicao_inicial=posicao_atual)
+        self.simulador = SimuladorElevador(sp, posicao_inicial=posicao_atual)
         self.simulador.tempo = tempo_base
         self.simulador.historico_tempo = [tempo_base]
         self.simulador.historico_posicao = [posicao_atual]
 
         self.simulacao_ativa = True
-        self.plot_widget.addLine(y=destino, pen=pg.mkPen('r', style=pg.QtCore.Qt.DashLine))
+        self.plot_widget.addLine(y=sp, pen=pg.mkPen('r', style=pg.QtCore.Qt.DashLine))
         self.timer.start(int(self.simulador.Ts * 1000))
 
     def atualizar_simulacao(self):
         if self.simulador and self.simulacao_ativa:
-            if self.simulador.passo():
-                self.todos_tempos.append(self.simulador.historico_tempo[-1])
-                self.todas_posicoes.append(self.simulador.historico_posicao[-1])
-                self.curva.setData(self.todos_tempos, self.todas_posicoes, clear=True)
+            terminou = not self.simulador.passo()
+            self.todos_tempos.append(self.simulador.historico_tempo[-1])
+            self.todas_posicoes.append(self.simulador.historico_posicao[-1])
+            self.curva.setData(self.todos_tempos, self.todas_posicoes, clear=True)
 
-                pos = self.simulador.posicao_atual
-                andar = self.altura_para_andar(pos)
-                self.indicador_andar.setText(f"Posição atual: {pos:.2f} m  ({andar})")
-        else:
-            self.timer.stop()
+            pos = self.simulador.posicao_atual
+            andar = self.altura_para_andar(pos)
+            self.indicador_andar.setText(f"Posição atual: {pos:.2f} m  ({andar})")
+
+            self.visor_numero.setText(andar)
+
+            if not terminou:
+                if self.simulador.sp > pos:
+                    self.visor_direcao.setText("▲")
+                elif self.simulador.sp < pos:
+                    self.visor_direcao.setText("▼")
+                else:
+                    self.visor_direcao.setText("-")
+            else:
+                self.visor_direcao.setText("-")
+                self.timer.stop()
+                self.simulacao_ativa = False
+
 
     def parar_emergencia(self):
         self.simulacao_ativa = False
@@ -215,7 +310,7 @@ class ElevadorWindow(QWidget):
         for nome, valor in self.andares.items():
             if abs(altura - valor) <= 1.0:
                 return nome
-        return "Entre andares"
+        #return "Entre andares"
 
     def reiniciar_grafico(self):
         self.timer.stop()
@@ -226,9 +321,7 @@ class ElevadorWindow(QWidget):
         self.plot_widget.setXRange(0, 100)
         self.plot_widget.setYRange(0, 36)
         self.plot_widget.getPlotItem().getAxis('bottom').setTickSpacing(5, 5)
-        self.curva = pg.PlotDataItem(pen=pg.mkPen('b', width=2))
-        self.curva.setData(self.todos_tempos, self.todas_posicoes)
-        self.plot_widget.addItem(self.curva)
+        self.curva = self.plot_widget.plot(self.todos_tempos, self.todas_posicoes, pen=pg.mkPen('b', width=2))
         self.simulador = None
         self.indicador_andar.setText("Gráfico reiniciado. Posição atual: 0.00 m")
         if self.botao_selecionado:
