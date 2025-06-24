@@ -13,8 +13,12 @@ class ElevadorWindow(QWidget):
         super().__init__()
         self.setWindowTitle("Simulador de Elevador - PyQtGraph")
         self.simulador = None
-        self.timer = QTimer()
+        self.timer = QTimer() 
         self.timer.timeout.connect(self.atualizar_simulacao)
+        self.parada_timer = QTimer()
+        self.parada_timer.setSingleShot(True)
+        self.parada_timer.timeout.connect(self.finalizar_parada)
+        self.em_parada_final = False
         self.botao_selecionado = None
         self.simulacao_ativa = False
 
@@ -285,17 +289,25 @@ class ElevadorWindow(QWidget):
             self.visor_numero.setText(andar)
 
             if not terminou:
-                if self.simulador.sp > pos:
-                    self.visor_direcao.setText("▲")
-                elif self.simulador.sp < pos:
-                    self.visor_direcao.setText("▼")
-                else:
-                    self.visor_direcao.setText("-")
+                if not self.em_parada_final:
+                    if self.simulador.sp > pos:
+                        self.visor_direcao.setText("▲")
+                    elif self.simulador.sp < pos:
+                        self.visor_direcao.setText("▼")
+                    else:
+                        self.visor_direcao.setText("-")
             else:
+                self.em_parada_final = True
                 self.visor_direcao.setText("-")
                 self.timer.stop()
-                self.simulacao_ativa = False
+                self.parada_timer.start(500)
 
+
+    def finalizar_parada(self):
+        self.simulacao_ativa = False
+        self.em_parada_final = False
+        self.timer.stop()
+        self.visor_direcao.setText("-")
 
     def parar_emergencia(self):
         self.simulacao_ativa = False
@@ -307,10 +319,8 @@ class ElevadorWindow(QWidget):
             self.indicador_andar.setText("Movimento interrompido por STOP.")
 
     def altura_para_andar(self, altura):
-        for nome, valor in self.andares.items():
-            if abs(altura - valor) <= 1.0:
-                return nome
-        #return "Entre andares"
+        mais_proximo = min(self.andares.items(), key=lambda x: abs(x[1] - altura))
+        return mais_proximo[0]
 
     def reiniciar_grafico(self):
         self.timer.stop()
