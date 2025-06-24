@@ -16,14 +16,3 @@ Este projeto simula o comportamento de um elevador residencial com controle fuzz
 
 ---
 
-## 🧰 Requisitos
-
-- Python 3.10+
-- `pip install -r requirements.txt`
-
-Recomenda-se instalar em um ambiente virtual:
-
-```bash
-python -m venv venv
-source venv/bin/activate   # ou venv\Scripts\activate no Windows
-pip install -r requirements.txt
