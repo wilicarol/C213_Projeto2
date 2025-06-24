@@ -7,14 +7,14 @@ class SimuladorElevador:
         self.Ts = Ts
         self.k1_subida = 1
         self.k1_descida = -1
-        self.k2 = 0.45
+        self.k2 = 0.251287  # ganho realista para deslocamento
+        self.k1 = 1.0
+
         self.posicao_atual = posicao_inicial
         self.tempo = 0.0
         self.tempo_passado = 0.0
 
-        self.potencia = 0.45
-        self.potencia_inicial = 0.45
-        self.tempo_inicial = 1.0
+        self.tempo_inicial = 0.0
         self.inicializando = True
         self.em_fase_parada = False
 
@@ -26,11 +26,16 @@ class SimuladorElevador:
         self.historico_tempo = [0.0]
 
     def passo(self):
+        sentido = self.k1_subida if self.sp > self.posicao_atual else self.k1_descida
+
         if self.inicializando:
-            sentido = self.k1_subida if self.sp > self.posicao_atual else self.k1_descida
-            self.posicao_atual = sentido * self.posicao_atual * 0.998 + self.potencia_inicial * self.k2
-            self.tempo_passado += self.Ts
-            if self.tempo_passado >= self.tempo_inicial:
+            self.tempo_inicial += self.Ts
+            potencia_inicial = (self.tempo_inicial / 2.0) * 0.315
+            potencia_inicial = min(potencia_inicial, 0.315)
+
+            self.posicao_atual += potencia_inicial * self.k2 * sentido
+
+            if self.tempo_inicial >= 2.0:
                 self.inicializando = False
         else:
             erro = self.sp - self.posicao_atual
@@ -40,21 +45,19 @@ class SimuladorElevador:
                 self.em_fase_parada = True
 
             if not self.em_fase_parada:
-                erro = np.clip(erro, 0, 28)
                 delta_erro = np.clip(delta_erro, -10, 10)
                 self.fuzzy.input['Erro'] = erro
                 self.fuzzy.input['DeltaErro'] = delta_erro
                 self.fuzzy.compute()
-                self.potencia = self.fuzzy.output['PotenciaMotor']
+                potencia = self.fuzzy.output['PotenciaMotor']
             else:
-                self.potencia *= 0.85
+                potencia = self.fuzzy.output['PotenciaMotor'] * 0.85
 
-            sentido = self.k1_subida if self.sp > self.posicao_atual else self.k1_descida
-            self.posicao_atual = sentido * self.posicao_atual * 0.998 + self.potencia * self.k2
+            self.posicao_atual += potencia * self.k2 * sentido
             self.erro_anterior = erro
 
         self.tempo += self.Ts
         self.historico_posicao.append(self.posicao_atual)
         self.historico_tempo.append(self.tempo)
 
-        return not (self.em_fase_parada and self.potencia < 0.01)
+        return not (self.em_fase_parada and potencia < 0.01)
