@@ -2,7 +2,7 @@ import numpy as np
 from fuzzy_controller import novo_controlador_fuzzy
 
 class SimuladorElevador:
-    def __init__(self, sp, posicao_inicial=4.0, Ts=0.05, debug=False):
+    def __init__(self, sp, posicao_inicial=4.0, Ts=0.2, debug=False):
 
         self.sp = sp
         self.Ts = Ts
