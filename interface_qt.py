@@ -11,7 +11,7 @@ from mqtt_handler import MqttElevadorClient
 class ElevadorWindow(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Simulador de Elevador - PyQtGraph")
+        self.setWindowTitle("Simulador de Elevador")
         self.simulador = None
         self.timer = QTimer() 
         self.timer.timeout.connect(self.atualizar_simulacao)
@@ -119,47 +119,6 @@ class ElevadorWindow(QWidget):
             }
         """)
 
-        '''# 🔐 Campo de senha com feedback
-        senha_layout = QHBoxLayout()
-        senha_label = QLabel("Senha para Subsolo/Técnico:")
-
-        self.senha_input = QLineEdit()
-        self.senha_input.setEchoMode(QLineEdit.Password)
-        self.senha_input.setPlaceholderText("Digite a senha...")
-        self.senha_input.setFixedWidth(200)
-        self.senha_input.setStyleSheet("""
-            QLineEdit {
-                padding: 5px;
-                border: 1px solid #aaa;
-                border-radius: 4px;
-                font-size: 14px;
-            }
-        """)
-
-        self.senha_feedback = QLabel("")
-        self.senha_feedback.setStyleSheet("color: gray; font-size: 12px;")
-
-        senha_box = QVBoxLayout()
-        senha_box.addWidget(self.senha_input)
-        senha_box.addWidget(self.senha_feedback)
-
-        senha_layout.addWidget(senha_label)
-        senha_layout.addLayout(senha_box)
-        layout.addLayout(senha_layout)
-
-
-        self.direcao_label = QLabel("-")  # inicializado com traço
-        self.direcao_label.setAlignment(Qt.AlignCenter)
-        self.direcao_label.setStyleSheet("""
-            QLabel {
-                font-size: 24px;
-                color: orange;
-                font-weight: bold;
-            }
-        """)
-        layout.addWidget(self.direcao_label)'''
-
-
         self.grid = QGridLayout()
         self.botoes_andar = {}
         self.criar_botoes()
@@ -262,11 +221,16 @@ class ElevadorWindow(QWidget):
 
 
 
-    def iniciar_simulacao(self, sp):
+    def iniciar_simulacao(self, andar_destino):
+        if isinstance(andar_destino, str):
+            sp = self.andares.get(andar_destino, 0.0)
+        else:
+            sp = andar_destino  # Caso venha em metros
+
         posicao_atual = self.simulador.posicao_atual if self.simulador else 0.0
         tempo_base = self.todos_tempos[-1] if self.todos_tempos else 0.0
 
-        self.simulador = SimuladorElevador(sp, posicao_inicial=posicao_atual)
+        self.simulador = SimuladorElevador(sp, posicao_inicial=posicao_atual, debug=True)
         self.simulador.tempo = tempo_base
         self.simulador.historico_tempo = [tempo_base]
         self.simulador.historico_posicao = [posicao_atual]
@@ -275,9 +239,12 @@ class ElevadorWindow(QWidget):
         self.plot_widget.addLine(y=sp, pen=pg.mkPen('r', style=pg.QtCore.Qt.DashLine))
         self.timer.start(int(self.simulador.Ts * 1000))
 
+
     def atualizar_simulacao(self):
         if self.simulador and self.simulacao_ativa:
             terminou = not self.simulador.passo()
+
+            # Atualização dos gráficos e display
             self.todos_tempos.append(self.simulador.historico_tempo[-1])
             self.todas_posicoes.append(self.simulador.historico_posicao[-1])
             self.curva.setData(self.todos_tempos, self.todas_posicoes, clear=True)
@@ -285,9 +252,9 @@ class ElevadorWindow(QWidget):
             pos = self.simulador.posicao_atual
             andar = self.altura_para_andar(pos)
             self.indicador_andar.setText(f"Posição atual: {pos:.2f} m  ({andar})")
-
             self.visor_numero.setText(andar)
 
+            # Direção apenas enquanto não estiver em parada final
             if not terminou:
                 if not self.em_parada_final:
                     if self.simulador.sp > pos:
@@ -297,17 +264,36 @@ class ElevadorWindow(QWidget):
                     else:
                         self.visor_direcao.setText("-")
             else:
-                self.em_parada_final = True
                 self.visor_direcao.setText("-")
+                self.em_parada_final = True
                 self.timer.stop()
                 self.parada_timer.start(500)
 
+            # Lógica de desligamento gradual da lógica fuzzy
+            erro = abs(self.simulador.sp - pos)
 
+            if erro < 0.04 and not self.simulador.desligar_fuzzy:
+                self.simulador.desligar_fuzzy = True
+                self.simulador.iniciar_parada_suave()
+
+            # Quando a posição estabilizar após a parada
+            if self.simulador.em_parada_completa and not self.em_parada_final:
+                self.em_parada_final = True
+                self.timer.stop()
+                self.parada_timer.start(1000)
+
+    # Auxilio para Inércia
     def finalizar_parada(self):
         self.simulacao_ativa = False
         self.em_parada_final = False
         self.timer.stop()
         self.visor_direcao.setText("-")
+
+        if self.simulador and self.simulador.em_parada_completa:
+            andar_final = self.altura_para_andar(self.simulador.posicao_atual)
+            pos_final = self.simulador.posicao_atual  # mantém o valor real final
+            self.indicador_andar.setText(f"Parado no andar {andar_final} ({pos_final:.2f} m)")
+            self.visor_numero.setText(andar_final)
 
     def parar_emergencia(self):
         self.simulacao_ativa = False
@@ -338,8 +324,13 @@ class ElevadorWindow(QWidget):
             self.botao_selecionado.setStyleSheet("")
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
+    if QApplication.instance() is None:
+        app = QApplication(sys.argv)
+    else:
+        app = QApplication.instance()
+    
     janela = ElevadorWindow()
     janela.resize(900, 700)
     janela.show()
     sys.exit(app.exec_())
+
