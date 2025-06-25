@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import skfuzzy.control as ctrl
 
 # Definição dos universos de discurso
-erro_range = np.arange(0, 28.1, 0.1)
+erro_range = np.arange(0, 32.1, 0.1)
 deltaerro_range = np.arange(-1, 1.01, 0.01)
 potencia_range = np.arange(0, 1.01, 0.01)
 
@@ -19,9 +19,9 @@ DeltaErro.unit = 'm'; DeltaErro.membershipA = 'ΔE'
 PotenciaMotor.unit = '%'; PotenciaMotor.membershipA = 'PM'
 
 # Funções de pertinência - Erro
-Erro['P'] = fuzz.trapmf(Erro.universe, [0, 0, 4, 8])
-Erro['M'] = fuzz.trimf(Erro.universe, [6, 14, 20])
-Erro['G'] = fuzz.trapmf(Erro.universe, [18, 22, 28, 28])
+Erro['P'] = fuzz.trapmf(Erro.universe, [0, 0, 4, 12])      
+Erro['M'] = fuzz.trimf(Erro.universe, [8, 16, 24])         
+Erro['G'] = fuzz.trapmf(Erro.universe, [20, 28, 32, 32]) 
 
 # DeltaErro
 DeltaErro['N'] = fuzz.trapmf(DeltaErro.universe, [-1, -1, -0.3, -0.05])
