@@ -5,7 +5,7 @@ import skfuzzy.control as ctrl
 
 # Definição dos universos de discurso
 erro_range = np.arange(0, 32.1, 0.1)
-deltaerro_range = np.arange(-1, 1.01, 0.01)
+deltaerro_range = np.arange(0.1, 0.201, 0.001)
 potencia_range = np.arange(0, 1.01, 0.01)
 
 # Variáveis fuzzy
@@ -24,9 +24,9 @@ Erro['M'] = fuzz.trimf(Erro.universe, [8, 16, 24])
 Erro['G'] = fuzz.trapmf(Erro.universe, [20, 28, 32, 32]) 
 
 # DeltaErro
-DeltaErro['N'] = fuzz.trapmf(DeltaErro.universe, [-1, -1, -0.3, -0.05])
-DeltaErro['ZE'] = fuzz.trimf(DeltaErro.universe, [-0.1, 0.0, 0.1])
-DeltaErro['P'] = fuzz.trapmf(DeltaErro.universe, [0.05, 0.3, 1.0, 1.0])
+DeltaErro['P'] = fuzz.trapmf(DeltaErro.universe, [0.1, 0.1, 0.11, 0.13])    
+DeltaErro['M'] = fuzz.trimf(DeltaErro.universe, [0.12, 0.15, 0.18])       
+DeltaErro['G'] = fuzz.trapmf(DeltaErro.universe, [0.17, 0.19, 0.2, 0.2])   
 
 # PotênciaMotor
 PotenciaMotor['B'] = fuzz.trimf(PotenciaMotor.universe, [0.0, 0.15, 0.3])
@@ -35,15 +35,15 @@ PotenciaMotor['A'] = fuzz.trimf(PotenciaMotor.universe, [0.6, 0.85, 1.0])
 
 # Regras fuzzy baseadas na tabela fornecida
 regras = [
-    ctrl.Rule(Erro['P'] & DeltaErro['N'], PotenciaMotor['M']),
-    ctrl.Rule(Erro['P'] & DeltaErro['ZE'], PotenciaMotor['B']),
-    ctrl.Rule(Erro['P'] & DeltaErro['P'], PotenciaMotor['B']),
-    ctrl.Rule(Erro['M'] & DeltaErro['N'], PotenciaMotor['A']),
-    ctrl.Rule(Erro['M'] & DeltaErro['ZE'], PotenciaMotor['M']),
-    ctrl.Rule(Erro['M'] & DeltaErro['P'], PotenciaMotor['B']),
-    ctrl.Rule(Erro['G'] & DeltaErro['N'], PotenciaMotor['A']),
-    ctrl.Rule(Erro['G'] & DeltaErro['ZE'], PotenciaMotor['M']),
-    ctrl.Rule(Erro['G'] & DeltaErro['P'], PotenciaMotor['M']),
+    ctrl.Rule(Erro['P'] & DeltaErro['P'], PotenciaMotor['M']),
+    ctrl.Rule(Erro['P'] & DeltaErro['M'], PotenciaMotor['B']),
+    ctrl.Rule(Erro['P'] & DeltaErro['G'], PotenciaMotor['B']),
+    ctrl.Rule(Erro['M'] & DeltaErro['P'], PotenciaMotor['A']),
+    ctrl.Rule(Erro['M'] & DeltaErro['M'], PotenciaMotor['M']),
+    ctrl.Rule(Erro['M'] & DeltaErro['G'], PotenciaMotor['B']),
+    ctrl.Rule(Erro['G'] & DeltaErro['P'], PotenciaMotor['A']),
+    ctrl.Rule(Erro['G'] & DeltaErro['M'], PotenciaMotor['M']),
+    ctrl.Rule(Erro['G'] & DeltaErro['G'], PotenciaMotor['M']),
 ]
 
 # Função de criação do controlador
